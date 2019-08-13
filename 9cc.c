@@ -7,19 +7,19 @@
 
 // トークンの種類
 typedef enum {
-    TK_RESERVED, // 記号
-    TK_NUM,      // 整数
-    TK_EOF,      // 入力の終わりを表すトークン
+    TK_RESERVED,  // 記号
+    TK_NUM,       // 整数
+    TK_EOF,       // 入力の終わりを表すトークン
 } TokenKind;
 
 typedef struct Token Token;
 
 // トークン型
 struct Token {
-    TokenKind kind; // トークンの型
-    Token *next;    // 次のトークン
-    int val;        // kindがTK_NUMの場合, その数値
-    char *str;      // トークンの文字列
+    TokenKind kind;  // トークンの型
+    Token *next;     // 次のトークン
+    int val;         // kindがTK_NUMの場合, その数値
+    char *str;       // トークンの文字列
 };
 
 // 現在着目しているトークン
@@ -45,9 +45,9 @@ void error_at(char *loc, char *fmt, ...) {
 
     int pos = loc - user_input;
     fprintf(stderr, "%s\n", user_input);
-    fprintf(stderr, "%*s", pos, ""); // pos個の空白を出力
+    fprintf(stderr, "%*s", pos, "");  // pos個の空白を出力
     fprintf(stderr, "^ ");
-    vfprintf(stderr, fmt,  ap);
+    vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     exit(1);
 }
@@ -55,7 +55,7 @@ void error_at(char *loc, char *fmt, ...) {
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて
 // 真を返す。それ以外の場合には偽を返す。
 bool consume(char op) {
-    if (token->kind != TK_RESERVED || token-> str[0] != op)
+    if (token->kind != TK_RESERVED || token->str[0] != op)
         return false;
     token = token->next;
     return true;
@@ -105,13 +105,6 @@ Token *tokenize(char *p) {
             continue;
         }
 
-        /*
-        if (*p == '+' || *p == '-') {
-            cur = new_token(TK_RESERVED, cur, p++);
-            continue;
-        }
-        */
-
         // Add by Cassin
         if (*p == '+' || *p == '-' ||
             *p == '/' || *p == '*' ||
@@ -142,29 +135,28 @@ Token *tokenize(char *p) {
 
 // 抽象構文木のノードの種類
 typedef enum {
-    ND_ADD, // +
-    ND_SUB, // -
-    ND_MUL, // *
-    ND_DIV, // /
-    ND_NUM, // 整数
+    ND_ADD,  // +
+    ND_SUB,  // -
+    ND_MUL,  // *
+    ND_DIV,  // /
+    ND_NUM,  // 整数
 } NodeKind;
 
 typedef struct Node Node;
 
 // 抽象構文木のノードの型
 struct Node {
-    NodeKind kind; // ノードの型
-    Node *lhs;     // 左辺
-    Node *rhs;     // 右辺
-    int val;       // kindがND_NUMの場合のみ使う
+    NodeKind kind;  // ノードの型
+    Node *lhs;      // 左辺
+    Node *rhs;      // 右辺
+    int val;        // kindがND_NUMの場合のみ使う
 };
-
 
 // 新しいノードを作成
 // 右辺と左辺を受け取る2項演算子
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
-    node->kind =  kind;
+    node->kind = kind;
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
@@ -172,14 +164,14 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
 
 // 新しいノードを作成
 // 数値
-Node *new_node_num(int  val) {
-    Node  *node  = calloc(1,  sizeof(Node));
+Node *new_node_num(int val) {
+    Node *node = calloc(1, sizeof(Node));
     node->kind = ND_NUM;
     node->val = val;
     return node;
 }
 
-Node *expr(); // Add by Cassin
+Node *expr();  // Add by Cassin
 Node *term() {
     // 次のトークンが"("なら、"(" expr ")" のはず
     if (consume('(')) {
@@ -192,15 +184,22 @@ Node *term() {
     return new_node_num(expect_number());
 }
 
+Node *unary() {
+    if (consume('+'))
+        return term();
+    if (consume('-'))
+        return new_node(ND_SUB, new_node_num(0), term());
+    return term();
+}
 
 Node *mul() {
-    Node *node = term();
+    Node *node = unary();
 
     for (;;) {
         if (consume('*'))
-            node = new_node(ND_MUL, node, term());
+            node = new_node(ND_MUL, node, unary());
         else if (consume('/'))
-            node = new_node(ND_DIV, node, term());
+            node = new_node(ND_DIV, node, unary());
         else
             return node;
     }
@@ -254,14 +253,11 @@ void gen(Node *node) {
     printf("  push rax\n");
 }
 
-
-
 int main(int argc, char **argv) {
     if (argc != 2) {
         fprintf(stderr, "引数の個数が正しくありません\n");
         return 1;
     }
-
 
     // トークナイズしてパースする
     user_input = argv[1];
@@ -272,7 +268,6 @@ int main(int argc, char **argv) {
     printf(".intel_syntax noprefix\n");
     printf(".global main\n");
     printf("main:\n");
-
 
     // 抽象構文木を下りながらコード生成
     gen(node);
